@@ -108,6 +108,9 @@ def main() -> int:
     if not due:
         print("Нічого публікувати.")
         return 0
+    if not DRY and not os.environ.get("THREADS_TOKEN", "").strip():
+        print(f"::warning::У черзі {len(due)} пост(ів), але секрет THREADS_TOKEN ще не заданий.")
+        return 0
     uid = "me" if DRY else api.me()["id"]
     done = 0
     for when, f, p in due[:MAX_PER_RUN]:
