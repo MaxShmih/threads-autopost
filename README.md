@@ -1,0 +1,39 @@
+# threads-autopost
+
+Автопублікація постів рубрики «Хуйово, друже» в Threads через офіційний Threads API і GitHub Actions. Усе безкоштовно.
+
+## Як це працює
+
+1. Щоранку Claude кладе 10 постів у `queue/<дата>/<NN-slug>/` (файл `post.json` + картинка PNG) і пушить у `main`.
+2. **Публікація постів** (`publish.yml`) запускається щогодини й публікує пости, у яких настав час `slot` (київський час). Довгий текст ділиться на частини до 500 символів: перша йде з картинкою, решта відповідями під нею.
+3. **Статистика постів** (`insights.yml`) щовечора записує перегляди, лайки, коментарі, репости, цитати й поширення в `post.json` і `stats/latest.json`.
+4. **Продовження токена** (`refresh-token.yml`) двічі на місяць продовжує токен Threads, якщо задано `GH_PAT`.
+
+## Секрети (Settings → Secrets and variables → Actions)
+
+| Секрет | Що це |
+|---|---|
+| `THREADS_TOKEN` | Довготривалий токен Threads (60 днів). Обов'язковий. |
+| `GH_PAT` | Fine-grained токен GitHub з доступом лише до цього репозиторію і правом **Secrets: Read and write**. Потрібен, щоб токен Threads продовжувався сам. Необов'язковий. |
+
+Потрібні дозволи застосунку Meta: `threads_basic`, `threads_content_publish`, `threads_manage_replies`, `threads_manage_insights`.
+
+## Формат post.json
+
+```json
+{
+  "date": "2026-10-26",
+  "slot": "09:10",
+  "slug": "lock-screen",
+  "topic": "Коди на заблокованому екрані",
+  "text": "Коди з SMS видно прямо на заблокованому екрані? Хуйово, друже.\n\n…",
+  "image": "image.png",
+  "status": "queued"
+}
+```
+
+Після публікації скрипт додає `status: published`, `threads_id`, `permalink`, `published_at`; після збору статистики — `stats` і `stats_at`. Після трьох невдалих спроб пост отримує `status: failed` і текст помилки в `error`.
+
+## Перевірка без публікації
+
+Actions → «Публікація постів» → Run workflow → увімкни «Лише показати…».

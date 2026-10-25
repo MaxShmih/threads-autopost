@@ -1,0 +1,32 @@
+name: Продовження токена Threads
+
+on:
+  schedule:
+    - cron: "23 6 1,15 * *"   # двічі на місяць; токен живе 60 днів
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Перевірити, що є GH_PAT
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          if [ -z "$GH_PAT" ]; then
+            echo "::warning::Секрет GH_PAT не заданий, тому токен не оновлюється автоматично. Онови THREADS_TOKEN вручну до кінця 60 днів."
+            exit 0
+          fi
+          echo "HAS_PAT=1" >> "$GITHUB_ENV"
+      - name: Оновити токен
+        if: env.HAS_PAT == '1'
+        env:
+          THREADS_TOKEN: ${{ secrets.THREADS_TOKEN }}
+          OUT: ${{ runner.temp }}/new_token.txt
+        run: python3 scripts/refresh_token.py
+      - name: Записати новий токен у секрет
+        if: env.HAS_PAT == '1'
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: gh secret set THREADS_TOKEN --repo "$GITHUB_REPOSITORY" < "${{ runner.temp }}/new_token.txt"
