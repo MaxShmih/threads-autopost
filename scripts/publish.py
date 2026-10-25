@@ -77,8 +77,17 @@ def wait_ready(container_id: str) -> None:
 
 def publish(uid: str, post: dict, folder: Path) -> dict:
     parts = split_text(post["text"])
-    img = folder / post["image"]
-    first = api.post(f"{uid}/threads", media_type="IMAGE", image_url=raw_url(img), text=parts[0])
+    images = post.get("images") or [post["image"]]
+    if len(images) > 1:
+        # Карусель: «Хуйово, друже» + «Добре, друже» (як виправити)
+        children = []
+        for name in images:
+            item = api.post(f"{uid}/threads", media_type="IMAGE", image_url=raw_url(folder / name), is_carousel_item="true")
+            wait_ready(item["id"])
+            children.append(item["id"])
+        first = api.post(f"{uid}/threads", media_type="CAROUSEL", children=",".join(children), text=parts[0])
+    else:
+        first = api.post(f"{uid}/threads", media_type="IMAGE", image_url=raw_url(folder / images[0]), text=parts[0])
     wait_ready(first["id"])
     root = api.post(f"{uid}/threads_publish", creation_id=first["id"])["id"]
     ids = [root]
