@@ -1,0 +1,32 @@
+name: Отримати токен Threads
+
+on:
+  workflow_dispatch:
+    inputs:
+      code:
+        description: "Код з адресного рядка після ?code= (діє 1 годину)"
+        required: true
+
+jobs:
+  token:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Обміняти код на токен
+        env:
+          THREADS_APP_ID: ${{ secrets.THREADS_APP_ID }}
+          THREADS_APP_SECRET: ${{ secrets.THREADS_APP_SECRET }}
+          REDIRECT_URI: https://github.com/${{ github.repository }}
+          CODE: ${{ inputs.code }}
+          OUT: ${{ runner.temp }}/token.txt
+        run: python3 scripts/get_token.py
+      - name: Записати токен у секрет THREADS_TOKEN
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::Немає секрету GH_PAT, тому токен не записано. Додай GH_PAT і запусти ще раз з новим кодом."
+            exit 1
+          fi
+          gh secret set THREADS_TOKEN --repo "$GITHUB_REPOSITORY" < "${{ runner.temp }}/token.txt"
+          echo "THREADS_TOKEN збережено. Автопублікація увімкнена."
